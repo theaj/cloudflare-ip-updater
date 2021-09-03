@@ -5,24 +5,46 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/rs/zerolog/log"
 )
 
-const CheckInterval = 5 * time.Second
 const WhatIsMyIPAddressURL = "https://ifconfig.me/ip"
 
 func Start() {
 	ctx := context.Background()
-	api, err := cloudflare.NewWithAPIToken(os.Getenv("CF_API_KEY"))
+
+	cfKey := os.Getenv("CF_API_KEY")
+	if cfKey == "" {
+		log.Fatal().Msg("CF_API_KEY cannot be empty.")
+	}
+
+	api, err := cloudflare.NewWithAPIToken(cfKey)
 	if err != nil {
 		log.Fatal().AnErr("error", err).Msgf("Failed to start monitoring")
 	}
 
 	zoneName := os.Getenv("ZONE_NAME")
+	if zoneName == "" {
+		log.Fatal().Msg("ZONE_NAME cannot be empty.")
+	}
+
 	dnsRecordName := os.Getenv("DNS_RECORD")
+	if dnsRecordName == "" {
+		log.Fatal().Msg("DNS_RECORD cannot be empty.")
+	}
+
+	checkInterval := 60 * time.Second
+	if interval, exists := os.LookupEnv("CHECK_INTERVAL"); exists {
+		i, err := strconv.ParseInt(interval, 10, 16)
+		if err != nil {
+			log.Fatal().AnErr("error", err).Msgf("Could not parse environment variable: CHECK_INTERVAL")
+		}
+		checkInterval = time.Duration(i) * time.Second
+	}
 
 	log.Info().Msgf("Retrieving current IP for DNS entry...")
 
@@ -68,6 +90,6 @@ func Start() {
 				}
 			}
 		}
-		time.Sleep(CheckInterval)
+		time.Sleep(checkInterval)
 	}
 }
