@@ -69,10 +69,11 @@ func Start() {
 	log.Info().Msgf("DNS IP found: %s", currentIP)
 
 	for {
-		log.Info().Msgf("Checking IP...")
 		resp, err := http.Get(WhatIsMyIPAddressURL)
 		if err != nil {
 			log.Err(err).Msg("Could not get IP address")
+		} else if resp.StatusCode != http.StatusOK {
+			log.Error().Msgf("%s returned %s", WhatIsMyIPAddressURL, resp.StatusCode)
 		} else {
 			data, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
